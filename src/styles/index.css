@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #000000;
+  --panel: #071026; /* deep navy */
+  --muted: #94a3b8;
+  --text: #e6eef8;
+  --accent: #7B3CFF;
+}
+
+[data-theme='light'] {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --muted: #475569;
+  --text: #0f172a;
+  --accent: #7c3aed;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+}
+
+.glass {
+  backdrop-filter: blur(8px) saturate(120%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.rounded-20 {
+  border-radius: 20px;
+}
+
+.text-muted {
+  color: var(--muted);
+}
+
+/* Timeline styles */
+.timeline-panel {
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+.timeline-track {
+  transition: background 160ms ease;
+}
+
+.clip-shadow {
+  box-shadow: 0 6px 18px rgba(123,60,255,0.12), inset 0 -2px 6px rgba(0,0,0,0.6);
+}
+
+.handle {
+  width: 6px;
+  background: rgba(255,255,255,0.06);
+}
+
+.shadow-playhead {
+  box-shadow: 0 0 8px rgba(123,60,255,0.6);
+}
+
+.cursor-grab { cursor: grab; }
+.cursor-grab:active { cursor: grabbing; }
+
+

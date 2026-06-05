@@ -1,0 +1,9 @@
+import React, { useEffect } from 'react'
+
+export default function ThemeProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', 'dark')
+  }, [])
+
+  return <>{children}</>
+}
