@@ -8,6 +8,7 @@ import { RootState, AppDispatch } from '@/store'
 import { setTime } from '@/store/slices/playbackSlice'
 import { setPlayhead, updateClip, moveClipMagnetic } from '@/store/slices/timelineSlice'
 import { isMainTrack } from '@/utils/magneticTrackUtils'
+import { Track } from '@/types/timeline'
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>()
@@ -16,6 +17,7 @@ export default function Home() {
   const duration = useSelector((s: RootState) => s.timeline.duration)
   const currentTime = useSelector((s: RootState) => s.playback.currentTime)
   const tracks = useSelector((s: RootState) => s.timeline.tracks)
+  const trackGroups = useSelector((s: RootState) => s.timeline.trackGroups)
 
   const handleUpload = (_file: File) => {
     // mediaHandler will handle dispatching to store; no local state needed
@@ -28,7 +30,7 @@ export default function Home() {
 
   const handleUpdateTrack = (trackId: string, clip: any) => {
     // Find the track to check if it's the main track
-    const track = tracks.find(t => t.id === trackId)
+    const track = tracks.find((t: Track) => t.id === trackId)
 
     if (track && isMainTrack(track)) {
       // Apply magnetic behavior for main track
@@ -51,7 +53,14 @@ export default function Home() {
         ) : (
           <div className="flex flex-col gap-4">
             <VideoPlayer src={media.src} />
-            <Timeline duration={duration} currentTime={currentTime} tracks={tracks} onSeek={handleSeek} onUpdateTrack={handleUpdateTrack} />
+            <Timeline
+              duration={duration}
+              currentTime={currentTime}
+              tracks={tracks}
+              trackGroups={trackGroups}
+              onSeek={handleSeek}
+              onUpdateTrack={handleUpdateTrack}
+            />
           </div>
         )}
       </div>

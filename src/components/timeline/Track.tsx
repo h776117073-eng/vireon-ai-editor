@@ -1,6 +1,7 @@
 import React from 'react'
 import Clip from './Clip'
 import { isMainTrack } from '@/utils/magneticTrackUtils'
+import { Track as TrackType } from '@/types/timeline'
 
 type ClipData = {
   id: string
@@ -10,15 +11,8 @@ type ClipData = {
   color?: string
 }
 
-type TrackData = {
-  id: string
-  name?: string
-  kind: 'video' | 'audio'
-  clips: ClipData[]
-}
-
 type Props = {
-  track: TrackData
+  track: TrackType
   pixelsPerSec: number
   duration: number
   onUpdateClip?: (clip: ClipData) => void

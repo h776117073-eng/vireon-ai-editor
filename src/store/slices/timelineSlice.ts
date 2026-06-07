@@ -1,94 +1,172 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
-import { EditorTask } from '@/types/editorCommands'
+import { Track, TrackMetadata, Clip, TimelineState, TrackKind } from '@/types/timeline'
 import {
   removeClipAndCompact,
   moveClipMagnetic,
-  insertClipAtPosition,
-  calculateMagneticPositions
+  insertClipAtPosition
 } from '@/utils/magneticTrackUtils'
+import { organizeTracksByKind, getNextAvailableIndex, reorderTrack, getTrackById } from '@/utils/timelineDataUtils'
+import { createDefaultTimeline } from '@/utils/trackFactory'
+import { EditorTask } from '@/types/editorCommands'
 
-export type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
-export type Track = { id: string; name?: string; kind: 'video' | 'audio'; clips: Clip[] }
-
-type TimelineState = {
-  tracks: Track[]
-  duration: number
-  playhead: number
-  zoom: number
-  selectedClipId?: string | null
-  scrollOffset: number
-  viewportWidth: number
-  magneticMode: boolean
+const initialState: TimelineState = {
+  tracks: [],
+  trackGroups: { videoTracks: [], audioTracks: [], textTracks: [] },
+  duration: 0,
+  playhead: 0,
+  zoom: 1,
+  selectedClipId: null,
+  selectedTrackId: undefined,
+  scrollOffset: 0,
+  viewportWidth: 0,
+  magneticMode: true
 }
-
-const initialState: TimelineState = { tracks: [], duration: 0, playhead: 0, zoom: 1, selectedClipId: null, scrollOffset: 0, viewportWidth: 0, magneticMode: true }
 
 const timelineSlice = createSlice({
   name: 'timeline',
   initialState,
   reducers: {
     initFromMedia(state, action: PayloadAction<{ mediaId: string; duration: number }>) {
-      const { mediaId, duration } = action.payload
+      const { duration } = action.payload
       state.duration = duration
-      state.tracks = [
-        { id: 'track-video-1', name: 'Video 1', kind: 'video', clips: [{ id: 'clip-1', start: 0, duration, label: 'Primary' }] },
-        { id: 'track-audio-1', name: 'Audio 1', kind: 'audio', clips: [] }
-      ]
+      state.tracks = createDefaultTimeline(duration)
+      state.trackGroups = organizeTracksByKind(state.tracks)
       state.playhead = 0
       state.zoom = 1
     },
+
+    // Track management
+    addTrack(state, action: PayloadAction<{ kind: TrackKind; name?: string; metadata?: Partial<TrackMetadata> }>) {
+      const { kind, name, metadata } = action.payload
+      const index = getNextAvailableIndex(state.tracks)
+
+      const newTrack: Track = {
+        id: `track_${kind.replace('-', '_')}_${index}`,
+        name: name || kind.charAt(0).toUpperCase() + kind.slice(1),
+        kind,
+        index,
+        clips: [],
+        metadata: { ...metadata }
+      }
+
+      state.tracks.push(newTrack)
+      state.trackGroups = organizeTracksByKind(state.tracks)
+    },
+
+    removeTrack(state, action: PayloadAction<string>) {
+      const trackId = action.payload
+      state.tracks = state.tracks.filter(t => t.id !== trackId)
+      state.trackGroups = organizeTracksByKind(state.tracks)
+      if (state.selectedTrackId === trackId) {
+        state.selectedTrackId = undefined
+      }
+    },
+
+    reorderTracks(state, action: PayloadAction<{ trackId: string; newIndex: number }>) {
+      const { trackId, newIndex } = action.payload
+      state.tracks = reorderTrack(state.tracks, trackId, newIndex)
+      state.trackGroups = organizeTracksByKind(state.tracks)
+    },
+
+    updateTrackMetadata(state, action: PayloadAction<{ trackId: string; metadata: Partial<TrackMetadata> }>) {
+      const { trackId, metadata } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (track) {
+        track.metadata = { ...track.metadata, ...metadata }
+      }
+    },
+
+    selectTrack(state, action: PayloadAction<string | undefined>) {
+      state.selectedTrackId = action.payload
+    },
+
+    // Playhead and zoom
     setPlayhead(state, action: PayloadAction<number>) {
       state.playhead = action.payload
     },
+
     setZoom(state, action: PayloadAction<number>) {
       state.zoom = action.payload
     },
+
+    // Clip selection
     selectClip(state, action: PayloadAction<string | null>) {
       state.selectedClipId = action.payload
     },
+
+    // Clip operations - backward compatible
     updateClip(state, action: PayloadAction<{ trackId: string; clip: Clip }>) {
       const { trackId, clip } = action.payload
-      const tr = state.tracks.find((t) => t.id === trackId)
-      if (!tr) return
-      const idx = tr.clips.findIndex((c) => c.id === clip.id)
-      if (idx >= 0) tr.clips[idx] = clip
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+      const idx = track.clips.findIndex(c => c.id === clip.id)
+      if (idx >= 0) track.clips[idx] = clip
     },
+
     moveClip(state, action: PayloadAction<{ trackId: string; clipId: string; newStart: number }>) {
       const { trackId, clipId, newStart } = action.payload
-      const tr = state.tracks.find((t) => t.id === trackId)
-      if (!tr) return
-      const clip = tr.clips.find((c) => c.id === clipId)
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+      const clip = track.clips.find(c => c.id === clipId)
       if (clip) clip.start = Math.max(0, Math.min(state.duration - clip.duration, newStart))
     },
-    setScrollOffset(state, action: PayloadAction<number>) {
-      state.scrollOffset = action.payload
-    },
-    setViewportWidth(state, action: PayloadAction<number>) {
-      state.viewportWidth = action.payload
-    },
-    toggleMagneticMode(state, action: PayloadAction<boolean>) {
-      state.magneticMode = action.payload
-    },
+
+    // Magnetic operations (main track only)
     removeClipMagnetic(state, action: PayloadAction<{ trackId: string; clipId: string }>) {
       const { trackId, clipId } = action.payload
-      const track = state.tracks.find(t => t.id === trackId)
+      const track = getTrackById(state.tracks, trackId)
       if (!track) return
       track.clips = removeClipAndCompact(track.clips, clipId)
     },
+
     moveClipMagnetic(state, action: PayloadAction<{ trackId: string; clipId: string; newStart: number }>) {
       const { trackId, clipId, newStart } = action.payload
-      const track = state.tracks.find(t => t.id === trackId)
+      const track = getTrackById(state.tracks, trackId)
       if (!track) return
       track.clips = moveClipMagnetic(track.clips, clipId, newStart)
     },
+
     insertClipMagnetic(state, action: PayloadAction<{ trackId: string; clip: Clip; index: number }>) {
       const { trackId, clip, index } = action.payload
-      const track = state.tracks.find(t => t.id === trackId)
+      const track = getTrackById(state.tracks, trackId)
       if (!track) return
       track.clips = insertClipAtPosition(track.clips, clip, index)
+    },
+
+    // Viewport
+    setScrollOffset(state, action: PayloadAction<number>) {
+      state.scrollOffset = action.payload
+    },
+
+    setViewportWidth(state, action: PayloadAction<number>) {
+      state.viewportWidth = action.payload
+    },
+
+    // Magnetic mode
+    toggleMagneticMode(state, action: PayloadAction<boolean>) {
+      state.magneticMode = action.payload
     }
   }
 })
 
-export const { initFromMedia, setPlayhead, setZoom, selectClip, updateClip, moveClip, setScrollOffset, setViewportWidth, toggleMagneticMode, removeClipMagnetic, moveClipMagnetic, insertClipMagnetic } = timelineSlice.actions
+export const {
+  initFromMedia,
+  addTrack,
+  removeTrack,
+  reorderTracks,
+  updateTrackMetadata,
+  selectTrack,
+  setPlayhead,
+  setZoom,
+  selectClip,
+  updateClip,
+  moveClip,
+  removeClipMagnetic,
+  moveClipMagnetic,
+  insertClipMagnetic,
+  setScrollOffset,
+  setViewportWidth,
+  toggleMagneticMode
+} = timelineSlice.actions
+
 export default timelineSlice.reducer

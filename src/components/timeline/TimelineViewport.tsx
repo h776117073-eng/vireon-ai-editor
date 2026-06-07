@@ -1,8 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import { TimelineStateManager } from '@/services/timelineStateManager'
-
-type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
-type Track = { id: string; name?: string; kind: 'video' | 'audio'; clips: Clip[] }
+import { Track } from '@/types/timeline'
 
 type Props = {
   duration: number

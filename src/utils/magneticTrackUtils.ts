@@ -1,6 +1,8 @@
 // Magnetic timeline utilities for CapCut-style clip management
 // Prevents gaps between clips on main track and enables magnetic snapping
 
+import { Track as BaseTrack } from '@/types/timeline'
+
 export interface Clip {
   id: string
   start: number
@@ -9,17 +11,14 @@ export interface Clip {
   color?: string
 }
 
-export interface Track {
-  id: string
-  name?: string
-  kind: 'video' | 'audio'
+export interface Track extends BaseTrack {
   clips: Clip[]
 }
 
 const SNAP_THRESHOLD = 0.2 // seconds - distance to snap adjacent clips
 
-export function isMainTrack(track: Track): boolean {
-  return track.kind === 'video' && track.id === 'track-video-1'
+export function isMainTrack(track: BaseTrack): boolean {
+  return track.kind === 'main-video'
 }
 
 export function calculateMagneticPositions(clips: Clip[]): Clip[] {

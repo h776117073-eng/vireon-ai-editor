@@ -1,29 +1,38 @@
 import React, { useMemo, useState, useCallback } from 'react'
 import TimeRuler from './TimeRuler'
-import Track from './Track'
+import TrackContainer from './TrackContainer'
 import FixedPlayhead from './FixedPlayhead'
 import TimelineViewport from './TimelineViewport'
 import ZoomControls from './ZoomControls'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '@/store'
 import { play, pause } from '@/store/slices/playbackSlice'
-import { setScrollOffset } from '@/store/slices/timelineSlice'
+import { setScrollOffset, selectTrack, removeTrack, updateTrackMetadata } from '@/store/slices/timelineSlice'
+import { Track, TrackGroup } from '@/types/timeline'
 
 type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
-type TrackType = { id: string; name?: string; kind: 'video' | 'audio'; clips: Clip[] }
 
 type Props = {
   duration: number
   currentTime: number
-  tracks?: TrackType[]
+  tracks?: Track[]
+  trackGroups?: TrackGroup
   onSeek?: (time: number) => void
   onUpdateTrack?: (trackId: string, clip: Clip) => void
 }
 
-export default function TimelineContainer({ duration, currentTime, tracks = [], onSeek, onUpdateTrack }: Props) {
+export default function TimelineContainer({
+  duration,
+  currentTime,
+  tracks = [],
+  trackGroups,
+  onSeek,
+  onUpdateTrack
+}: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const isPlaying = useSelector((s: RootState) => s.playback.isPlaying)
   const scrollOffset = useSelector((s: RootState) => s.timeline.scrollOffset)
+  const selectedTrackId = useSelector((s: RootState) => s.timeline.selectedTrackId)
   const [zoom, setZoom] = useState(1)
   const pixelsPerSec = useMemo(() => 120 * zoom, [zoom])
 
@@ -42,12 +51,22 @@ export default function TimelineContainer({ duration, currentTime, tracks = [], 
     dispatch(setScrollOffset(offset))
   }
 
+  const organizedTracks = trackGroups || {
+    videoTracks: tracks.filter(t => t.kind === 'main-video' || t.kind === 'overlay-video'),
+    audioTracks: tracks.filter(t => t.kind === 'audio'),
+    textTracks: tracks.filter(t => t.kind === 'text')
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <button onClick={togglePlay} className="px-3 py-1 rounded-md glass">{isPlaying ? 'Pause' : 'Play'}</button>
-          <div className="text-sm text-[color:var(--muted)]">{formatTime(currentTime)} / {formatTime(duration)}</div>
+          <button onClick={togglePlay} className="px-3 py-1 rounded-md glass">
+            {isPlaying ? 'Pause' : 'Play'}
+          </button>
+          <div className="text-sm text-[color:var(--muted)]">
+            {formatTime(currentTime)} / {formatTime(duration)}
+          </div>
         </div>
         <ZoomControls zoom={zoom} setZoom={setZoom} />
       </div>
@@ -64,11 +83,34 @@ export default function TimelineContainer({ duration, currentTime, tracks = [], 
           tracks={tracks}
           onScrollOffsetChange={handleScrollOffsetChange}
         >
-          {tracks.map((t) => (
-            <div key={t.id} className="mb-2">
-              <Track track={t} pixelsPerSec={pixelsPerSec} duration={duration} onUpdateClip={(c) => handleUpdateClip(t.id, c)} />
-            </div>
-          ))}
+          <TrackContainer
+            trackGroups={organizedTracks}
+            allTracks={tracks}
+            pixelsPerSec={pixelsPerSec}
+            duration={duration}
+            selectedTrackId={selectedTrackId}
+            onSelectTrack={(trackId) => dispatch(selectTrack(trackId))}
+            onRemoveTrack={(trackId) => dispatch(removeTrack(trackId))}
+            onToggleTrackVisibility={(trackId) => {
+              const track = tracks.find(t => t.id === trackId)
+              if (track) {
+                dispatch(updateTrackMetadata({ trackId, metadata: { visible: !track.metadata.visible } }))
+              }
+            }}
+            onToggleTrackLock={(trackId) => {
+              const track = tracks.find(t => t.id === trackId)
+              if (track) {
+                dispatch(updateTrackMetadata({ trackId, metadata: { locked: !track.metadata.locked } }))
+              }
+            }}
+            onToggleTrackMute={(trackId) => {
+              const track = tracks.find(t => t.id === trackId)
+              if (track) {
+                dispatch(updateTrackMetadata({ trackId, metadata: { muted: !track.metadata.muted } }))
+              }
+            }}
+            onUpdateClip={handleUpdateClip}
+          />
         </TimelineViewport>
 
         <FixedPlayhead
