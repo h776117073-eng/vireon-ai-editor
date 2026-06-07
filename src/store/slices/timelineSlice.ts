@@ -10,9 +10,11 @@ type TimelineState = {
   playhead: number
   zoom: number
   selectedClipId?: string | null
+  scrollOffset: number
+  viewportWidth: number
 }
 
-const initialState: TimelineState = { tracks: [], duration: 0, playhead: 0, zoom: 1, selectedClipId: null }
+const initialState: TimelineState = { tracks: [], duration: 0, playhead: 0, zoom: 1, selectedClipId: null, scrollOffset: 0, viewportWidth: 0 }
 
 const timelineSlice = createSlice({
   name: 'timeline',
@@ -50,9 +52,15 @@ const timelineSlice = createSlice({
       if (!tr) return
       const clip = tr.clips.find((c) => c.id === clipId)
       if (clip) clip.start = Math.max(0, Math.min(state.duration - clip.duration, newStart))
+    },
+    setScrollOffset(state, action: PayloadAction<number>) {
+      state.scrollOffset = action.payload
+    },
+    setViewportWidth(state, action: PayloadAction<number>) {
+      state.viewportWidth = action.payload
     }
   }
 })
 
-export const { initFromMedia, setPlayhead, setZoom, selectClip, updateClip, moveClip } = timelineSlice.actions
+export const { initFromMedia, setPlayhead, setZoom, selectClip, updateClip, moveClip, setScrollOffset, setViewportWidth } = timelineSlice.actions
 export default timelineSlice.reducer

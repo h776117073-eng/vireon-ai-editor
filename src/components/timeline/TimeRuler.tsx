@@ -3,9 +3,10 @@ import React from 'react'
 type Props = {
   duration: number
   pixelsPerSec: number
+  scrollOffset: number
 }
 
-export default function TimeRuler({ duration, pixelsPerSec }: Props) {
+export default function TimeRuler({ duration, pixelsPerSec, scrollOffset }: Props) {
   const totalPx = Math.max(0, duration * pixelsPerSec)
   const approxTicks = Math.max(5, Math.floor(totalPx / 120))
   const secondsPerTick = Math.max(1, duration / approxTicks)
@@ -16,7 +17,7 @@ export default function TimeRuler({ duration, pixelsPerSec }: Props) {
   return (
     <div className="w-full overflow-hidden">
       <div className="relative h-8">
-        <div className="absolute inset-0 flex" style={{ width: totalPx }}>
+        <div className="flex" style={{ width: totalPx, transform: `translateX(-${scrollOffset}px)` }}>
           {ticks.map((t, i) => (
             <div key={i} style={{ left: (t / duration) * 100 + '%' }} className="absolute">
               <div className="h-2 w-px bg-[rgba(255,255,255,0.06)]" />

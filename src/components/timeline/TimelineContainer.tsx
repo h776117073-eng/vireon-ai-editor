@@ -1,11 +1,13 @@
 import React, { useMemo, useState, useCallback } from 'react'
 import TimeRuler from './TimeRuler'
 import Track from './Track'
-import Playhead from './Playhead'
+import FixedPlayhead from './FixedPlayhead'
+import TimelineViewport from './TimelineViewport'
 import ZoomControls from './ZoomControls'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '@/store'
 import { play, pause } from '@/store/slices/playbackSlice'
+import { setScrollOffset } from '@/store/slices/timelineSlice'
 
 type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
 type TrackType = { id: string; name?: string; kind: 'video' | 'audio'; clips: Clip[] }
@@ -21,6 +23,7 @@ type Props = {
 export default function TimelineContainer({ duration, currentTime, tracks = [], onSeek, onUpdateTrack }: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const isPlaying = useSelector((s: RootState) => s.playback.isPlaying)
+  const scrollOffset = useSelector((s: RootState) => s.timeline.scrollOffset)
   const [zoom, setZoom] = useState(1)
   const pixelsPerSec = useMemo(() => 120 * zoom, [zoom])
 
@@ -35,6 +38,10 @@ export default function TimelineContainer({ duration, currentTime, tracks = [], 
     else dispatch(play())
   }
 
+  const handleScrollOffsetChange = (offset: number) => {
+    dispatch(setScrollOffset(offset))
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center justify-between mb-3">
@@ -45,22 +52,31 @@ export default function TimelineContainer({ duration, currentTime, tracks = [], 
         <ZoomControls zoom={zoom} setZoom={setZoom} />
       </div>
 
-      <div className="timeline-panel rounded-20 glass p-3" style={{ minHeight: 260 }}>
+      <div className="timeline-panel rounded-20 glass p-3 relative" style={{ minHeight: 260 }}>
         <div className="mb-2">
-          <TimeRuler duration={duration} pixelsPerSec={pixelsPerSec} />
+          <TimeRuler duration={duration} pixelsPerSec={pixelsPerSec} scrollOffset={scrollOffset} />
         </div>
 
-        <div className="overflow-x-auto">
-          <div className="relative" style={{ width: Math.max(800, duration * pixelsPerSec) }}>
-            {tracks.map((t) => (
-              <div key={t.id} className="mb-2">
-                <Track track={t} pixelsPerSec={pixelsPerSec} duration={duration} onUpdateClip={(c) => handleUpdateClip(t.id, c)} />
-              </div>
-            ))}
+        <TimelineViewport
+          duration={duration}
+          currentTime={currentTime}
+          zoom={zoom}
+          tracks={tracks}
+          onScrollOffsetChange={handleScrollOffsetChange}
+        >
+          {tracks.map((t) => (
+            <div key={t.id} className="mb-2">
+              <Track track={t} pixelsPerSec={pixelsPerSec} duration={duration} onUpdateClip={(c) => handleUpdateClip(t.id, c)} />
+            </div>
+          ))}
+        </TimelineViewport>
 
-            <Playhead time={currentTime} pixelsPerSec={pixelsPerSec} onScrub={handleSeek} duration={duration} />
-          </div>
-        </div>
+        <FixedPlayhead
+          currentTime={currentTime}
+          pixelsPerSec={pixelsPerSec}
+          onSeek={handleSeek}
+          duration={duration}
+        />
       </div>
     </div>
   )

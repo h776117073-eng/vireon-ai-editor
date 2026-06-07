@@ -41,10 +41,7 @@ export default function Home() {
         ) : (
           <div className="flex flex-col gap-4">
             <VideoPlayer src={media.src} />
-            <Timeline duration={duration} currentTime={currentTime} tracks={tracks} onSeek={handleSeek} onUpdateTrack={handleUpdateTrack
-          <div className="flex flex-col gap-4">
-            <VideoPlayer src={media.src} />
-            <Timeline duration={duration} currentTime={currentTime} tracks={tracks} onSeek={() => {}} onUpdateTrack={() => {}} />
+            <Timeline duration={duration} currentTime={currentTime} tracks={tracks} onSeek={handleSeek} onUpdateTrack={handleUpdateTrack} />
           </div>
         )}
       </div>
