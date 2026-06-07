@@ -6,7 +6,8 @@ import Chat from '../components/chat/Chat'
 import { useSelector, useDispatch } from 'react-redux'
 import { RootState, AppDispatch } from '@/store'
 import { setTime } from '@/store/slices/playbackSlice'
-import { setPlayhead, updateClip } from '@/store/slices/timelineSlice'
+import { setPlayhead, updateClip, moveClipMagnetic } from '@/store/slices/timelineSlice'
+import { isMainTrack } from '@/utils/magneticTrackUtils'
 
 export default function Home() {
   const dispatch = useDispatch<AppDispatch>()
@@ -26,7 +27,16 @@ export default function Home() {
   }
 
   const handleUpdateTrack = (trackId: string, clip: any) => {
-    dispatch(updateClip({ trackId, clip }))
+    // Find the track to check if it's the main track
+    const track = tracks.find(t => t.id === trackId)
+
+    if (track && isMainTrack(track)) {
+      // Apply magnetic behavior for main track
+      dispatch(moveClipMagnetic({ trackId, clipId: clip.id, newStart: clip.start }))
+    } else {
+      // Use simple update for overlay tracks
+      dispatch(updateClip({ trackId, clip }))
+    }
   }
 
   return (
