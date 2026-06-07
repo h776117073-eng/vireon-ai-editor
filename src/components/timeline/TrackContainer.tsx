@@ -1,7 +1,8 @@
 import React from 'react'
-import { Track as TrackType, TrackGroup, TRACK_KIND_NAMES } from '@/types/timeline'
+import { Track as TrackType, TrackGroup } from '@/types/timeline'
 import Track from './Track'
 import TrackHeader from './TrackHeader'
+import { filterVisibleTracks } from '@/utils/trackControlUtils'
 
 type ClipData = {
   id: string
@@ -23,6 +24,7 @@ type Props = {
   onToggleTrackLock: (trackId: string) => void
   onToggleTrackMute: (trackId: string) => void
   onUpdateClip: (trackId: string, clip: ClipData) => void
+  onLockedAttempt?: () => void
 }
 
 function TrackSection({
@@ -36,7 +38,8 @@ function TrackSection({
   onToggleTrackVisibility,
   onToggleTrackLock,
   onToggleTrackMute,
-  onUpdateClip
+  onUpdateClip,
+  onLockedAttempt
 }: {
   title: string
   tracks: TrackType[]
@@ -49,17 +52,25 @@ function TrackSection({
   onToggleTrackLock: (trackId: string) => void
   onToggleTrackMute: (trackId: string) => void
   onUpdateClip: (trackId: string, clip: ClipData) => void
+  onLockedAttempt?: () => void
 }) {
   if (tracks.length === 0) return null
+
+  const visibleTracks = filterVisibleTracks(tracks)
 
   return (
     <div className="mb-4">
       <div className="px-3 py-2 text-xs font-semibold text-[color:var(--muted)] uppercase tracking-wide">
         {title}
+        {tracks.length > visibleTracks.length && (
+          <span className="ml-2 text-xs font-normal text-yellow-400">
+            ({visibleTracks.length}/{tracks.length} visible)
+          </span>
+        )}
       </div>
       <div className="space-y-1">
         {tracks.map((track) => (
-          <div key={track.id} className="mb-1">
+          <div key={track.id}>
             <TrackHeader
               track={track}
               isSelected={selectedTrackId === track.id}
@@ -69,12 +80,13 @@ function TrackSection({
               onToggleLock={() => onToggleTrackLock(track.id)}
               onToggleMute={() => onToggleTrackMute(track.id)}
             />
-            {track.metadata.visible && (
+            {track.metadata.visible !== false && (
               <Track
                 track={track}
                 pixelsPerSec={pixelsPerSec}
                 duration={duration}
                 onUpdateClip={(clip) => onUpdateClip(track.id, clip)}
+                onLockedAttempt={onLockedAttempt}
               />
             )}
           </div>
@@ -95,11 +107,11 @@ export default function TrackContainer({
   onToggleTrackVisibility,
   onToggleTrackLock,
   onToggleTrackMute,
-  onUpdateClip
+  onUpdateClip,
+  onLockedAttempt
 }: Props) {
   return (
     <div className="timeline-tracks-container space-y-2">
-      {/* Video Tracks */}
       <TrackSection
         title="Video"
         tracks={trackGroups.videoTracks}
@@ -112,9 +124,9 @@ export default function TrackContainer({
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
         onUpdateClip={onUpdateClip}
+        onLockedAttempt={onLockedAttempt}
       />
 
-      {/* Text Tracks */}
       <TrackSection
         title="Text"
         tracks={trackGroups.textTracks}
@@ -127,9 +139,9 @@ export default function TrackContainer({
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
         onUpdateClip={onUpdateClip}
+        onLockedAttempt={onLockedAttempt}
       />
 
-      {/* Audio Tracks */}
       <TrackSection
         title="Audio"
         tracks={trackGroups.audioTracks}
@@ -142,6 +154,7 @@ export default function TrackContainer({
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
         onUpdateClip={onUpdateClip}
+        onLockedAttempt={onLockedAttempt}
       />
     </div>
   )

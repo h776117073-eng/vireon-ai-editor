@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { getSnapTarget, shouldSnap, getAdjacentClips } from '@/utils/magneticTrackUtils'
+import { getSnapTarget, shouldSnap } from '@/utils/magneticTrackUtils'
 
 type ClipData = {
   id: string
@@ -15,11 +15,21 @@ type Props = {
   onChange?: (c: ClipData) => void
   isMagnetic?: boolean
   allClips?: ClipData[]
+  isTrackLocked?: boolean
+  onLockedAttempt?: () => void
 }
 
 const SNAP_THRESHOLD = 0.2 // seconds
 
-export default function Clip({ clip, pixelsPerSec, onChange, isMagnetic = false, allClips = [] }: Props) {
+export default function Clip({
+  clip,
+  pixelsPerSec,
+  onChange,
+  isMagnetic = false,
+  allClips = [],
+  isTrackLocked = false,
+  onLockedAttempt
+}: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [snapGuideX, setSnapGuideX] = useState<number | null>(null)
 
@@ -27,6 +37,12 @@ export default function Clip({ clip, pixelsPerSec, onChange, isMagnetic = false,
   const width = clip.duration * pixelsPerSec
 
   const startDrag = (e: React.PointerEvent) => {
+    // Prevent dragging locked tracks
+    if (isTrackLocked) {
+      onLockedAttempt?.()
+      return
+    }
+
     e.stopPropagation()
     const startX = e.clientX
     const startLeft = left
@@ -57,6 +73,12 @@ export default function Clip({ clip, pixelsPerSec, onChange, isMagnetic = false,
   }
 
   const startResize = (e: React.PointerEvent, side: 'left' | 'right') => {
+    // Prevent resizing locked tracks
+    if (isTrackLocked) {
+      onLockedAttempt?.()
+      return
+    }
+
     e.stopPropagation()
     const startX = e.clientX
     const startStart = clip.start
@@ -80,6 +102,10 @@ export default function Clip({ clip, pixelsPerSec, onChange, isMagnetic = false,
     window.addEventListener('pointerup', onUp)
   }
 
+  const cursorClass = isTrackLocked ? 'cursor-not-allowed' : 'cursor-grab'
+  const opacityClass = isTrackLocked ? 'opacity-50' : ''
+  const lockedStyle = isTrackLocked ? { pointerEvents: 'none' as const } : {}
+
   return (
     <>
       {snapGuideX !== null && (
@@ -90,13 +116,29 @@ export default function Clip({ clip, pixelsPerSec, onChange, isMagnetic = false,
       )}
       <div
         ref={ref}
-        className="absolute top-2 h-10 rounded-md clip-shadow cursor-grab select-none transition-transform hover:shadow-lg"
-        style={{ left, width, background: clip.color || 'linear-gradient(90deg,#7B3CFF,#4C1D95)' }}
+        className={`absolute top-2 h-10 rounded-md clip-shadow select-none transition-all ${cursorClass} ${opacityClass} ${
+          isTrackLocked ? 'border-2 border-red-500/50' : 'hover:shadow-lg'
+        }`}
+        style={{ left, width, background: clip.color || 'linear-gradient(90deg,#7B3CFF,#4C1D95)', ...lockedStyle }}
         onPointerDown={startDrag}
+        title={isTrackLocked ? 'Track is locked - cannot edit' : clip.label || 'Clip'}
       >
-        <div className="absolute left-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => startResize(e, 'left')} />
-        <div className="absolute right-0 top-0 h-full w-3 cursor-ew-resize" onPointerDown={(e) => startResize(e, 'right')} />
-        <div className="px-3 py-1 text-sm text-white truncate">{clip.label ?? 'Clip'}</div>
+        {!isTrackLocked && (
+          <>
+            <div
+              className="absolute left-0 top-0 h-full w-3 cursor-ew-resize"
+              onPointerDown={(e) => startResize(e, 'left')}
+            />
+            <div
+              className="absolute right-0 top-0 h-full w-3 cursor-ew-resize"
+              onPointerDown={(e) => startResize(e, 'right')}
+            />
+          </>
+        )}
+        <div className="px-3 py-1 text-sm text-white truncate flex items-center gap-1">
+          {isTrackLocked && <span title="Track locked">🔒</span>}
+          {clip.label ?? 'Clip'}
+        </div>
       </div>
     </>
   )

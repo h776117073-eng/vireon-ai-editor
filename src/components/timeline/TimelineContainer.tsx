@@ -34,6 +34,7 @@ export default function TimelineContainer({
   const scrollOffset = useSelector((s: RootState) => s.timeline.scrollOffset)
   const selectedTrackId = useSelector((s: RootState) => s.timeline.selectedTrackId)
   const [zoom, setZoom] = useState(1)
+  const [lockNotification, setLockNotification] = useState<string | null>(null)
   const pixelsPerSec = useMemo(() => 120 * zoom, [zoom])
 
   const handleSeek = useCallback((t: number) => onSeek && onSeek(t), [onSeek])
@@ -49,6 +50,11 @@ export default function TimelineContainer({
 
   const handleScrollOffsetChange = (offset: number) => {
     dispatch(setScrollOffset(offset))
+  }
+
+  const handleLockedAttempt = () => {
+    setLockNotification('🔒 This track is locked. Unlock to edit.')
+    setTimeout(() => setLockNotification(null), 3000)
   }
 
   const organizedTracks = trackGroups || {
@@ -67,6 +73,11 @@ export default function TimelineContainer({
           <div className="text-sm text-[color:var(--muted)]">
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
+          {lockNotification && (
+            <div className="px-3 py-1 rounded-md bg-red-500/20 text-red-400 text-sm animate-pulse">
+              {lockNotification}
+            </div>
+          )}
         </div>
         <ZoomControls zoom={zoom} setZoom={setZoom} />
       </div>
@@ -110,6 +121,7 @@ export default function TimelineContainer({
               }
             }}
             onUpdateClip={handleUpdateClip}
+            onLockedAttempt={handleLockedAttempt}
           />
         </TimelineViewport>
 
