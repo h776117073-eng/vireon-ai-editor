@@ -1,12 +1,15 @@
 // Professional multi-track timeline type definitions
 // Supports: main video, overlay video, text, and audio tracks with extensible metadata
 
+import { ClipAnimation } from './animation'
+
 export interface Clip {
   id: string
   start: number
   duration: number
   label?: string
   color?: string
+  animation?: ClipAnimation  // Optional animation state
 }
 
 // All possible track kinds

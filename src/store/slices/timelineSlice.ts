@@ -1,5 +1,6 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit'
 import { Track, TrackMetadata, Clip, TimelineState, TrackKind } from '@/types/timeline'
+import { AnimationPropertyType, InterpolationMode, AnimationValue } from '@/types/animation'
 import {
   removeClipAndCompact,
   moveClipMagnetic,
@@ -8,6 +9,7 @@ import {
 import { organizeTracksByKind, getNextAvailableIndex, reorderTrack, getTrackById } from '@/utils/timelineDataUtils'
 import { createDefaultTimeline } from '@/utils/trackFactory'
 import { splitClip } from '@/utils/clipSplitUtils'
+import { createClipAnimation, addKeyframeToTrack, ensureAnimationTrack, addAnimationTrackToClip, removeAnimationTrackFromClip, removeKeyframeFromTrack, updateKeyframeValue } from '@/utils/animationManager'
 import { EditorTask } from '@/types/editorCommands'
 
 const initialState: TimelineState = {
@@ -153,6 +155,126 @@ const timelineSlice = createSlice({
       }
     },
 
+    // Animation keyframes
+    addKeyframe(
+      state,
+      action: PayloadAction<{
+        trackId: string
+        clipId: string
+        propertyName: AnimationPropertyType
+        time: number
+        value: AnimationValue
+        easing?: InterpolationMode
+      }>
+    ) {
+      const { trackId, clipId, propertyName, time, value, easing } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clip = track.clips.find(c => c.id === clipId)
+      if (!clip) return
+
+      // Create animation container if needed
+      if (!clip.animation) {
+        clip.animation = createClipAnimation(clipId)
+      }
+
+      // Get or create animation track
+      let animationTrack = ensureAnimationTrack(clip.animation, propertyName)
+
+      // Add keyframe
+      animationTrack = addKeyframeToTrack(animationTrack, time, value, easing)
+
+      // Update animation in clip
+      clip.animation = addAnimationTrackToClip(clip.animation, animationTrack)
+    },
+
+    removeKeyframe(
+      state,
+      action: PayloadAction<{
+        trackId: string
+        clipId: string
+        propertyName: AnimationPropertyType
+        keyframeId: string
+      }>
+    ) {
+      const { trackId, clipId, propertyName, keyframeId } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clip = track.clips.find(c => c.id === clipId)
+      if (!clip || !clip.animation) return
+
+      const animationTrack = clip.animation.tracks.find(t => t.propertyName === propertyName)
+      if (!animationTrack) return
+
+      const updatedTrack = removeKeyframeFromTrack(animationTrack, keyframeId)
+      clip.animation = addAnimationTrackToClip(clip.animation, updatedTrack)
+    },
+
+    updateKeyframe(
+      state,
+      action: PayloadAction<{
+        trackId: string
+        clipId: string
+        propertyName: AnimationPropertyType
+        keyframeId: string
+        value?: AnimationValue
+        easing?: InterpolationMode
+      }>
+    ) {
+      const { trackId, clipId, propertyName, keyframeId, value, easing } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clip = track.clips.find(c => c.id === clipId)
+      if (!clip || !clip.animation) return
+
+      const animationTrack = clip.animation.tracks.find(t => t.propertyName === propertyName)
+      if (!animationTrack) return
+
+      const updatedTrack = updateKeyframeValue(animationTrack, keyframeId, value!, easing)
+      clip.animation = addAnimationTrackToClip(clip.animation, updatedTrack)
+    },
+
+    toggleAnimationTrack(
+      state,
+      action: PayloadAction<{
+        trackId: string
+        clipId: string
+        propertyName: AnimationPropertyType
+      }>
+    ) {
+      const { trackId, clipId, propertyName } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clip = track.clips.find(c => c.id === clipId)
+      if (!clip || !clip.animation) return
+
+      const animationTrack = clip.animation.tracks.find(t => t.propertyName === propertyName)
+      if (!animationTrack) return
+
+      animationTrack.enabled = !animationTrack.enabled
+    },
+
+    toggleAnimationClip(
+      state,
+      action: PayloadAction<{
+        trackId: string
+        clipId: string
+      }>
+    ) {
+      const { trackId, clipId } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clip = track.clips.find(c => c.id === clipId)
+      if (!clip || !clip.animation) return
+
+      clip.animation.enabled = !clip.animation.enabled
+    },
+
     // Viewport
     setScrollOffset(state, action: PayloadAction<number>) {
       state.scrollOffset = action.payload
@@ -185,6 +307,11 @@ export const {
   moveClipMagnetic,
   insertClipMagnetic,
   splitClipAtTime,
+  addKeyframe,
+  removeKeyframe,
+  updateKeyframe,
+  toggleAnimationTrack,
+  toggleAnimationClip,
   setScrollOffset,
   setViewportWidth,
   toggleMagneticMode
