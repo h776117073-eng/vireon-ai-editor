@@ -18,11 +18,13 @@ type Props = {
   pixelsPerSec: number
   duration: number
   selectedTrackId?: string
+  selectedClipId?: string | null
   onSelectTrack: (trackId: string) => void
   onRemoveTrack: (trackId: string) => void
   onToggleTrackVisibility: (trackId: string) => void
   onToggleTrackLock: (trackId: string) => void
   onToggleTrackMute: (trackId: string) => void
+  onSelectClip: (clipId: string) => void
   onUpdateClip: (trackId: string, clip: ClipData) => void
   onLockedAttempt?: () => void
 }
@@ -33,11 +35,13 @@ function TrackSection({
   pixelsPerSec,
   duration,
   selectedTrackId,
+  selectedClipId,
   onSelectTrack,
   onRemoveTrack,
   onToggleTrackVisibility,
   onToggleTrackLock,
   onToggleTrackMute,
+  onSelectClip,
   onUpdateClip,
   onLockedAttempt
 }: {
@@ -46,11 +50,13 @@ function TrackSection({
   pixelsPerSec: number
   duration: number
   selectedTrackId?: string
+  selectedClipId?: string | null
   onSelectTrack: (trackId: string) => void
   onRemoveTrack: (trackId: string) => void
   onToggleTrackVisibility: (trackId: string) => void
   onToggleTrackLock: (trackId: string) => void
   onToggleTrackMute: (trackId: string) => void
+  onSelectClip: (clipId: string) => void
   onUpdateClip: (trackId: string, clip: ClipData) => void
   onLockedAttempt?: () => void
 }) {
@@ -87,6 +93,8 @@ function TrackSection({
                 duration={duration}
                 onUpdateClip={(clip) => onUpdateClip(track.id, clip)}
                 onLockedAttempt={onLockedAttempt}
+                selectedClipId={selectedClipId}
+                onSelectClip={onSelectClip}
               />
             )}
           </div>
@@ -102,11 +110,13 @@ export default function TrackContainer({
   pixelsPerSec,
   duration,
   selectedTrackId,
+  selectedClipId,
   onSelectTrack,
   onRemoveTrack,
   onToggleTrackVisibility,
   onToggleTrackLock,
   onToggleTrackMute,
+  onSelectClip,
   onUpdateClip,
   onLockedAttempt
 }: Props) {
@@ -118,11 +128,13 @@ export default function TrackContainer({
         pixelsPerSec={pixelsPerSec}
         duration={duration}
         selectedTrackId={selectedTrackId}
+        selectedClipId={selectedClipId}
         onSelectTrack={onSelectTrack}
         onRemoveTrack={onRemoveTrack}
         onToggleTrackVisibility={onToggleTrackVisibility}
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
+        onSelectClip={onSelectClip}
         onUpdateClip={onUpdateClip}
         onLockedAttempt={onLockedAttempt}
       />
@@ -133,11 +145,13 @@ export default function TrackContainer({
         pixelsPerSec={pixelsPerSec}
         duration={duration}
         selectedTrackId={selectedTrackId}
+        selectedClipId={selectedClipId}
         onSelectTrack={onSelectTrack}
         onRemoveTrack={onRemoveTrack}
         onToggleTrackVisibility={onToggleTrackVisibility}
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
+        onSelectClip={onSelectClip}
         onUpdateClip={onUpdateClip}
         onLockedAttempt={onLockedAttempt}
       />
@@ -148,11 +162,13 @@ export default function TrackContainer({
         pixelsPerSec={pixelsPerSec}
         duration={duration}
         selectedTrackId={selectedTrackId}
+        selectedClipId={selectedClipId}
         onSelectTrack={onSelectTrack}
         onRemoveTrack={onRemoveTrack}
         onToggleTrackVisibility={onToggleTrackVisibility}
         onToggleTrackLock={onToggleTrackLock}
         onToggleTrackMute={onToggleTrackMute}
+        onSelectClip={onSelectClip}
         onUpdateClip={onUpdateClip}
         onLockedAttempt={onLockedAttempt}
       />

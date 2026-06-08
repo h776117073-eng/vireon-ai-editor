@@ -7,8 +7,9 @@ import ZoomControls from './ZoomControls'
 import { useDispatch, useSelector } from 'react-redux'
 import { RootState, AppDispatch } from '@/store'
 import { play, pause } from '@/store/slices/playbackSlice'
-import { setScrollOffset, selectTrack, removeTrack, updateTrackMetadata } from '@/store/slices/timelineSlice'
+import { setScrollOffset, selectTrack, removeTrack, updateTrackMetadata, splitClipAtTime, selectClip } from '@/store/slices/timelineSlice'
 import { Track, TrackGroup } from '@/types/timeline'
+import { findClipUnderPlayhead, validateClipSplit } from '@/utils/clipSplitUtils'
 
 type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
 
@@ -33,8 +34,10 @@ export default function TimelineContainer({
   const isPlaying = useSelector((s: RootState) => s.playback.isPlaying)
   const scrollOffset = useSelector((s: RootState) => s.timeline.scrollOffset)
   const selectedTrackId = useSelector((s: RootState) => s.timeline.selectedTrackId)
+  const selectedClipId = useSelector((s: RootState) => s.timeline.selectedClipId)
   const [zoom, setZoom] = useState(1)
   const [lockNotification, setLockNotification] = useState<string | null>(null)
+  const [splitMessage, setSplitMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
   const pixelsPerSec = useMemo(() => 120 * zoom, [zoom])
 
   const handleSeek = useCallback((t: number) => onSeek && onSeek(t), [onSeek])
@@ -57,6 +60,40 @@ export default function TimelineContainer({
     setTimeout(() => setLockNotification(null), 3000)
   }
 
+  const handleSplitClip = () => {
+    if (!selectedClipId || !selectedTrackId) {
+      setSplitMessage({ text: '❌ No clip selected', type: 'error' })
+      setTimeout(() => setSplitMessage(null), 2000)
+      return
+    }
+
+    const track = tracks.find(t => t.id === selectedTrackId)
+    if (!track) return
+
+    const clip = track.clips.find(c => c.id === selectedClipId)
+    if (!clip) return
+
+    const validation = validateClipSplit(clip, currentTime)
+    if (!validation.valid) {
+      setSplitMessage({ text: `❌ ${validation.reason}`, type: 'error' })
+      setTimeout(() => setSplitMessage(null), 3000)
+      return
+    }
+
+    dispatch(splitClipAtTime({ trackId: selectedTrackId, clipId: selectedClipId, splitTime: currentTime }))
+    setSplitMessage({ text: '✂️ Clip split successfully', type: 'success' })
+    setTimeout(() => setSplitMessage(null), 2000)
+  }
+
+  const canSplitClip = () => {
+    if (!selectedClipId || !selectedTrackId) return false
+    const track = tracks.find(t => t.id === selectedTrackId)
+    if (!track) return false
+    const clip = track.clips.find(c => c.id === selectedClipId)
+    if (!clip) return false
+    return validateClipSplit(clip, currentTime).valid
+  }
+
   const organizedTracks = trackGroups || {
     videoTracks: tracks.filter(t => t.kind === 'main-video' || t.kind === 'overlay-video'),
     audioTracks: tracks.filter(t => t.kind === 'audio'),
@@ -70,12 +107,41 @@ export default function TimelineContainer({
           <button onClick={togglePlay} className="px-3 py-1 rounded-md glass">
             {isPlaying ? 'Pause' : 'Play'}
           </button>
+          <button
+            onClick={handleSplitClip}
+            disabled={!canSplitClip()}
+            className={`px-3 py-1 rounded-md transition-all ${
+              canSplitClip()
+                ? 'glass hover:bg-purple-500/30 cursor-pointer'
+                : 'opacity-50 cursor-not-allowed glass'
+            }`}
+            title={
+              !selectedClipId
+                ? 'Select a clip to split'
+                : !canSplitClip()
+                  ? 'Playhead must be inside the selected clip'
+                  : 'Split clip at playhead'
+            }
+          >
+            ✂️ Split
+          </button>
           <div className="text-sm text-[color:var(--muted)]">
             {formatTime(currentTime)} / {formatTime(duration)}
           </div>
           {lockNotification && (
             <div className="px-3 py-1 rounded-md bg-red-500/20 text-red-400 text-sm animate-pulse">
               {lockNotification}
+            </div>
+          )}
+          {splitMessage && (
+            <div
+              className={`px-3 py-1 rounded-md text-sm animate-pulse ${
+                splitMessage.type === 'success'
+                  ? 'bg-green-500/20 text-green-400'
+                  : 'bg-red-500/20 text-red-400'
+              }`}
+            >
+              {splitMessage.text}
             </div>
           )}
         </div>
@@ -100,6 +166,7 @@ export default function TimelineContainer({
             pixelsPerSec={pixelsPerSec}
             duration={duration}
             selectedTrackId={selectedTrackId}
+            selectedClipId={selectedClipId}
             onSelectTrack={(trackId) => dispatch(selectTrack(trackId))}
             onRemoveTrack={(trackId) => dispatch(removeTrack(trackId))}
             onToggleTrackVisibility={(trackId) => {
@@ -120,6 +187,7 @@ export default function TimelineContainer({
                 dispatch(updateTrackMetadata({ trackId, metadata: { muted: !track.metadata.muted } }))
               }
             }}
+            onSelectClip={(clipId) => dispatch(selectClip(clipId))}
             onUpdateClip={handleUpdateClip}
             onLockedAttempt={handleLockedAttempt}
           />

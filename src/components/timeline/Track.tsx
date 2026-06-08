@@ -17,9 +17,19 @@ type Props = {
   duration: number
   onUpdateClip?: (clip: ClipData) => void
   onLockedAttempt?: () => void
+  selectedClipId?: string | null
+  onSelectClip?: (clipId: string) => void
 }
 
-export default function Track({ track, pixelsPerSec, duration, onUpdateClip, onLockedAttempt }: Props) {
+export default function Track({
+  track,
+  pixelsPerSec,
+  duration,
+  onUpdateClip,
+  onLockedAttempt,
+  selectedClipId,
+  onSelectClip
+}: Props) {
   const isMagnetic = isMainTrack(track)
   const isLocked = track.metadata.locked === true
 
@@ -51,6 +61,8 @@ export default function Track({ track, pixelsPerSec, duration, onUpdateClip, onL
               allClips={isMagnetic ? track.clips : undefined}
               isTrackLocked={isLocked}
               onLockedAttempt={onLockedAttempt}
+              isSelected={selectedClipId === c.id}
+              onSelect={onSelectClip}
             />
           ))}
         </div>

@@ -17,6 +17,8 @@ type Props = {
   allClips?: ClipData[]
   isTrackLocked?: boolean
   onLockedAttempt?: () => void
+  isSelected?: boolean
+  onSelect?: (clipId: string) => void
 }
 
 const SNAP_THRESHOLD = 0.2 // seconds
@@ -28,7 +30,9 @@ export default function Clip({
   isMagnetic = false,
   allClips = [],
   isTrackLocked = false,
-  onLockedAttempt
+  onLockedAttempt,
+  isSelected = false,
+  onSelect
 }: Props) {
   const ref = useRef<HTMLDivElement | null>(null)
   const [snapGuideX, setSnapGuideX] = useState<number | null>(null)
@@ -105,6 +109,7 @@ export default function Clip({
   const cursorClass = isTrackLocked ? 'cursor-not-allowed' : 'cursor-grab'
   const opacityClass = isTrackLocked ? 'opacity-50' : ''
   const lockedStyle = isTrackLocked ? { pointerEvents: 'none' as const } : {}
+  const selectedClass = isSelected ? 'ring-2 ring-cyan-400 shadow-lg shadow-cyan-400/50' : ''
 
   return (
     <>
@@ -116,12 +121,25 @@ export default function Clip({
       )}
       <div
         ref={ref}
-        className={`absolute top-2 h-10 rounded-md clip-shadow select-none transition-all ${cursorClass} ${opacityClass} ${
+        className={`absolute top-2 h-10 rounded-md clip-shadow select-none transition-all ${cursorClass} ${opacityClass} ${selectedClass} ${
           isTrackLocked ? 'border-2 border-red-500/50' : 'hover:shadow-lg'
         }`}
         style={{ left, width, background: clip.color || 'linear-gradient(90deg,#7B3CFF,#4C1D95)', ...lockedStyle }}
-        onPointerDown={startDrag}
-        title={isTrackLocked ? 'Track is locked - cannot edit' : clip.label || 'Clip'}
+        onPointerDown={(e) => {
+          if (!isTrackLocked && !e.ctrlKey && !e.metaKey) {
+            e.stopPropagation()
+            onSelect?.(clip.id)
+          }
+          if ((e.ctrlKey || e.metaKey) && !isTrackLocked) {
+            e.stopPropagation()
+            startDrag(e)
+          }
+        }}
+        onClick={(e) => {
+          e.stopPropagation()
+          onSelect?.(clip.id)
+        }}
+        title={isTrackLocked ? 'Track is locked - cannot edit' : `${clip.label || 'Clip'} (click to select)`}
       >
         {!isTrackLocked && (
           <>

@@ -7,6 +7,7 @@ import {
 } from '@/utils/magneticTrackUtils'
 import { organizeTracksByKind, getNextAvailableIndex, reorderTrack, getTrackById } from '@/utils/timelineDataUtils'
 import { createDefaultTimeline } from '@/utils/trackFactory'
+import { splitClip } from '@/utils/clipSplitUtils'
 import { EditorTask } from '@/types/editorCommands'
 
 const initialState: TimelineState = {
@@ -133,6 +134,25 @@ const timelineSlice = createSlice({
       track.clips = insertClipAtPosition(track.clips, clip, index)
     },
 
+    // Clip splitting
+    splitClipAtTime(state, action: PayloadAction<{ trackId: string; clipId: string; splitTime: number }>) {
+      const { trackId, clipId, splitTime } = action.payload
+      const track = getTrackById(state.tracks, trackId)
+      if (!track) return
+
+      const clipIndex = track.clips.findIndex(c => c.id === clipId)
+      if (clipIndex < 0) return
+
+      const originalClip = track.clips[clipIndex]
+      try {
+        const { clipBefore, clipAfter } = splitClip(originalClip, splitTime)
+        track.clips.splice(clipIndex, 1, clipBefore, clipAfter)
+        state.selectedClipId = clipAfter.id
+      } catch (error) {
+        console.error('Failed to split clip:', error)
+      }
+    },
+
     // Viewport
     setScrollOffset(state, action: PayloadAction<number>) {
       state.scrollOffset = action.payload
@@ -164,6 +184,7 @@ export const {
   removeClipMagnetic,
   moveClipMagnetic,
   insertClipMagnetic,
+  splitClipAtTime,
   setScrollOffset,
   setViewportWidth,
   toggleMagneticMode
