@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react'
+import React, { useMemo, useState, useCallback, useEffect } from 'react'
 import TimeRuler from './TimeRuler'
 import TrackContainer from './TrackContainer'
 import FixedPlayhead from './FixedPlayhead'
@@ -10,6 +10,7 @@ import { play, pause } from '@/store/slices/playbackSlice'
 import { setScrollOffset, selectTrack, removeTrack, updateTrackMetadata, splitClipAtTime, selectClip } from '@/store/slices/timelineSlice'
 import { Track, TrackGroup } from '@/types/timeline'
 import { findClipUnderPlayhead, validateClipSplit } from '@/utils/clipSplitUtils'
+import { useTimelineZoom } from '@/hooks/useTimelineZoom'
 
 type Clip = { id: string; start: number; duration: number; label?: string; color?: string }
 
@@ -35,10 +36,37 @@ export default function TimelineContainer({
   const scrollOffset = useSelector((s: RootState) => s.timeline.scrollOffset)
   const selectedTrackId = useSelector((s: RootState) => s.timeline.selectedTrackId)
   const selectedClipId = useSelector((s: RootState) => s.timeline.selectedClipId)
-  const [zoom, setZoom] = useState(1)
+  const viewportWidth = useSelector((s: RootState) => s.timeline.viewportWidth)
+
+  // Use the new zoom controller hook
+  const {
+    zoomPercent,
+    zoomIn,
+    zoomOut,
+    reset: resetZoom,
+    setZoom,
+    formatTimeWithFrames,
+    calculateScrollForCenter,
+    getContentWidth,
+    pixelsPerSec
+  } = useTimelineZoom({
+    enableKeyboardShortcuts: true,
+    onZoomChange: (zoomState) => {
+      // Smart scroll centering: keep playhead centered when zooming
+      if (viewportWidth > 0) {
+        const contentWidth = getContentWidth(duration)
+        const { scrollOffset: newScrollOffset } = calculateScrollForCenter(
+          currentTime,
+          viewportWidth,
+          contentWidth
+        )
+        dispatch(setScrollOffset(newScrollOffset))
+      }
+    }
+  })
+
   const [lockNotification, setLockNotification] = useState<string | null>(null)
   const [splitMessage, setSplitMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null)
-  const pixelsPerSec = useMemo(() => 120 * zoom, [zoom])
 
   const handleSeek = useCallback((t: number) => onSeek && onSeek(t), [onSeek])
 
@@ -126,7 +154,7 @@ export default function TimelineContainer({
             ✂️ Split
           </button>
           <div className="text-sm text-[color:var(--muted)]">
-            {formatTime(currentTime)} / {formatTime(duration)}
+            {formatTimeWithFrames(currentTime)} / {formatTimeWithFrames(duration)}
           </div>
           {lockNotification && (
             <div className="px-3 py-1 rounded-md bg-red-500/20 text-red-400 text-sm animate-pulse">
@@ -145,7 +173,7 @@ export default function TimelineContainer({
             </div>
           )}
         </div>
-        <ZoomControls zoom={zoom} setZoom={setZoom} />
+        <ZoomControls zoom={zoomPercent / 100} setZoom={setZoom} onZoomIn={zoomIn} onZoomOut={zoomOut} onReset={resetZoom} />
       </div>
 
       <div className="timeline-panel rounded-20 glass p-3 relative" style={{ minHeight: 260 }}>
@@ -156,7 +184,7 @@ export default function TimelineContainer({
         <TimelineViewport
           duration={duration}
           currentTime={currentTime}
-          zoom={zoom}
+          zoom={pixelsPerSec / 120}
           tracks={tracks}
           onScrollOffsetChange={handleScrollOffsetChange}
         >
@@ -202,11 +230,4 @@ export default function TimelineContainer({
       </div>
     </div>
   )
-}
-
-function formatTime(s: number) {
-  if (!s || isNaN(s)) return '00:00'
-  const mm = Math.floor(s / 60)
-  const ss = Math.floor(s % 60)
-  return `${String(mm).padStart(2, '0')}:${String(ss).padStart(2, '0')}`
 }
